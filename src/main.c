@@ -219,7 +219,8 @@ void push_numstack(int operand) {
         fprintf(stderr, "ERROR: Operand stack overflow\n");
         exit(EXIT_FAILURE);
     }
-    return numstack[nnumstack++]=operand;
+    numstack[nnumstack++]=operand;
+    return;
 }
 
 /**
@@ -318,7 +319,7 @@ double main(int argc, char *argv[]) {
             if ((op=get_operator(*expr))) {
                 if (lastoperator 
                     && 
-                    (lastoperator==&startoperator || lastoperator != ')')
+                    (lastoperator==&startoperator || lastoperator->operator != ')')
                 ) {
                     if (op->operator=='-') op=get_operator('_');
                     else if (op->operator != '(') {
@@ -336,7 +337,7 @@ double main(int argc, char *argv[]) {
                 lastoperator=op;
             } else if (isdigit(*expr)) tstart=expr;
             else if (!isspace(*expr)) {
-                fprintf(stderr, "ERROR:Syntax error %s", *expr);
+                fprintf(stderr, "ERROR:Syntax error %c", *expr);
                 return EXIT_FAILURE;
             }
         } else {
@@ -347,10 +348,10 @@ double main(int argc, char *argv[]) {
             } else if ((op=get_operator(*expr))) {
                 push_numstack(atoi(tstart));
                 tstart=NULL;
-                shunt_operator(atoi(op));
+                shunt_operator(op);
                 lastoperator=op;
             } else if (!isdigit(*expr)) {
-                fprintf(stderr, "ERROR:Syntax error %s", *expr);
+                fprintf(stderr, "ERROR:Syntax error %c", *expr);
                 return EXIT_FAILURE;
             }
         }
