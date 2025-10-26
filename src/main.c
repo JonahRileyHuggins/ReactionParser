@@ -151,8 +151,8 @@ struct Operator {
     int unary; // bool
     int (*eval)(int arg1, int arg2); //evaluation function
 } operators[] = {
-    {'_', 10, ASSOC_RIGHT, 1, eval_uminus},
-    {'^', 9, ASSOC_RIGHT, 0, eval_exponent},
+    {'_', 9, ASSOC_RIGHT, 1, eval_uminus},
+    {'^', 10, ASSOC_RIGHT, 0, eval_exponent},
     {'*', 8, ASSOC_LEFT, 0, eval_multiply},
     {'/', 8, ASSOC_LEFT, 0, eval_divide},
     {'%', 8, ASSOC_LEFT, 0, eval_modulo},
