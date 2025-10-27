@@ -1,9 +1,30 @@
 /**
- * Shunting yard algorithm: converts infix notation equations to postfix notation
- * 
- * Credit given to https://literateprograms.org/shunting_yard_algorithm__c_.html 
- * For the primary code and helping undertand the algorithm
+ * @file main.c
+ * @brief ReactionParser: a string parser and evaluator for arithmetic expressions.
+ *
+ * This program uses the Shunting Yard algorithm to convert infix notation expressions
+ * (like 3 + 4 * 2) to postfix notation and evaluate them. It supports:
+ *   - Basic arithmetic: +, -, *, /, %
+ *   - Exponentiation: ^
+ *   - Unary minus
+ *   - Parentheses
+ *   - Floating point numbers
+ *
+ * Original implementation based on:
+ *   - Shunting Yard Algorithm in C: https://literateprograms.org/shunting_yard_algorithm__c_.html
+ *
+ * Modifications for double precision arithmetic inspired by:
+ *   - Anthony DiGirolamo, 2014: https://gist.github.com/AnthonyDiGirolamo/1179218
+ *
+ * Additional modifications and integration for ReactionParser project by:
+ *   - Jonah Huggins
+ *
+ * @note This file includes custom stack implementations for operators and operands,
+ *       and demonstrates operator precedence and right/left associativity handling.
+ *
+ * @date 2025
  */
+
 
 // --- library import --- //
 #include <stdio.h> 
