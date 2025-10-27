@@ -4,19 +4,26 @@ project(ReactionParser VERSION 1.0) # Define the project name and optionally its
 
 set(CMAKE_BUILD_TYPE "Debug")
 
-# Add an executable target, specifying its name and source files
 add_executable(ReactionParser
     src/main.c
+    src/parser.c
 )
 
-# Adding executable for unit tests
-add_executable(test_reactionparser tests/test_reactionparser.c)
-add_dependencies(test_reactionparser ReactionParser)
+add_executable(test_reactionparser
+    tests/test_reactionparser.c
+    src/parser.c
+)
+
+add_executable(speed
+    tests/speedtest.c
+    src/parser.c
+)
 
 # Linking math.h library
 if(UNIX)
     target_link_libraries(ReactionParser m)
     target_link_libraries(test_reactionparser m)
+    target_link_libraries(speed m)
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
