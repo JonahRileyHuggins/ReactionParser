@@ -374,6 +374,6 @@ double main(double argc, char *argv[]) {
         fprintf(stderr, "ERROR: Number stack has %d elements after evaluation. Should be 1. \n", nnumstack);
         return EXIT_FAILURE;
     }
-    printf("%d\n", numstack[0]);
+    printf("%lf\n", numstack[0]);
     return EXIT_SUCCESS;
 }

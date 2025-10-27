@@ -7,4 +7,7 @@ add_executable(ReactionParser
     src/main.c
 )
 
+# Linking math.h library
+target_link_libraries(ReactionParser PRIVATE m)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
