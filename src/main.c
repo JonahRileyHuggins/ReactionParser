@@ -14,6 +14,12 @@
 // --- variable definitions --- //
 #define MAXOPSTACK 64
 #define MAXNUMSTACK 64 
+#define CHECKMALLOC(var) if((var) == NULL) {printf("ERROR: malloc\n");abort();}
+
+// -- Size eval
+char get_keypress() {
+  return (char)getchar();
+}
 
 // -- Operator eval functions:
 /**
@@ -85,6 +91,7 @@ double eval_multiply(double arg1, double arg2) {
 double eval_divide(double arg1, double arg2) {
     if(!arg2){ // handles division by zero
         fprintf(stderr, "ERROR: Division by zero\n");
+        exit(EXIT_FAILURE);
     }
     return arg1/arg2; 
 }
@@ -104,9 +111,9 @@ double eval_divide(double arg1, double arg2) {
 double eval_modulo(double arg1, double arg2) {
     if(arg2 == 0.0){ // handles division by zero
         fprintf(stderr, "ERROR: Division by zero\n");
-        return NAN; // Not-a-number indicates error
+        exit(EXIT_FAILURE);
     }
-    return fmod(arg1,arg2); 
+    return fmodf(arg1,arg2); 
 }
 
 /**
@@ -178,8 +185,10 @@ struct Operator *get_operator(char ch) {
 }
 
 // -- stack manipulating functions
+
 struct Operator *opstack[MAXOPSTACK]; //operator stack
 int nopstack=0; // stores number of operators in the expression
+
 double numstack[MAXNUMSTACK]; //operand-number stack
 int nnumstack=0; // number of operands in expression
 
@@ -294,36 +303,65 @@ void shunt_operator(struct Operator *op) {
             }
         }
     }
-    push_opstack(op); // finally, 
+    push_opstack(op); 
+}
+
+/**
+ * @brief refactor method for evaluating decimal characters
+ * thanks to Anthony DiGirolamo
+ * 
+ * @param c character to evaluate
+ * 
+ * @returns bool 0 || 1
+ */
+int isdigit_or_decimal(int c) {
+  if (c == '.' || isdigit(c))
+    return 1;
+  else
+    return 0;
 }
 
 /**
  * @brief Calculate the value of an infix notation equation by converting to postfix 
  * via the Shunting Yard Algorithm    
  */
-int main(int argc, char *argv[]) {
-    char *expr;
-    char *tstart=NULL;
-    struct Operator startoperator={'X', 0, ASSOC_NONE, 0, NULL};
+int main(int argc, const char *argv[]) {
+    
+    char *expression;
+    expression = (char*) malloc(128 * sizeof(char)); // ?
+    CHECKMALLOC(expression);
+
+    int size = 0; // ?
+    char c;
+    while (size < 128) {
+        c = get_keypress();
+        if (c == EOF) break;
+
+        if (c != '\n') {
+            expression[size] = c;
+            size++;
+        }
+    }
+
+    char *expr; 
+    char *tstart = NULL;
+    struct Operator startoperator = {'X', 0, ASSOC_NONE, 0, NULL};
     struct Operator *op=NULL;
     double n1, n2;
 
-    struct Operator *lastoperator=&startoperator;
+    struct Operator *lastoperator = &startoperator;
 
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <expression>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
+    // if (argc < 2) {
+    //     fprintf(stderr, "Usage: %s <expression>\n", argv[0]);
+    //     return EXIT_FAILURE;
+    // }
     // main iteration loop:
-    for (expr=argv[1]; *expr; ++expr) {
+    for (expr=expression; *expr; ++expr) {
         if (!tstart) { 
             // evaluate if current expression is an operator:
             if ((op=get_operator(*expr))) {
-                if (lastoperator 
-                    && 
-                    (lastoperator==&startoperator || lastoperator->operator != ')')
-                ) {
-                    if (op->operator=='-') op=get_operator('_');
+                if (lastoperator && (lastoperator == &startoperator || lastoperator->operator != ')')) {
+                    if (op->operator == '-') op = get_operator('_');
                     else if (op->operator != '(') {
                         fprintf(
                             stderr, 
@@ -337,9 +375,9 @@ int main(int argc, char *argv[]) {
                 in priority order */
                 shunt_operator(op);
                 lastoperator=op;
-            } else if (isdigit(*expr) || *expr == '.') tstart=expr;
+            } else if (isdigit_or_decimal(*expr)) tstart = expr;
             else if (!isspace(*expr)) {
-                fprintf(stderr, "ERROR: Syntax error %c", *expr);
+                fprintf(stderr, "ERROR: Syntax error \n");
                 return EXIT_FAILURE;
             }
         } else {
@@ -352,14 +390,15 @@ int main(int argc, char *argv[]) {
                 tstart=NULL;
                 shunt_operator(op);
                 lastoperator=op;
-            } else if (!isdigit(*expr) || *expr != '.') {
-                fprintf(stderr, "ERROR: Syntax error %c\n", *expr);
+            } else if (!isdigit_or_decimal(*expr)) {
+                fprintf(stderr, "ERROR: Syntax error \n");
                 return EXIT_FAILURE;
             }
         }
     }
     // After tokens are handled, evaluate all remaining tokens on top of the operator stack
     if (tstart) push_numstack(atof(tstart));
+
     while (nopstack) {
         op=pop_opstack();
         n1=pop_numstack();
@@ -369,11 +408,12 @@ int main(int argc, char *argv[]) {
             push_numstack(op->eval(n2, n1));
         }
     }
+
     // assertion method to ensure final operand stack has 1 value:
     if (nnumstack != 1) {
         fprintf(stderr, "ERROR: Number stack has %d elements after evaluation. Should be 1. \n", nnumstack);
         return EXIT_FAILURE;
     }
-    printf("%lf\n", numstack[0]);
+    printf("%G\n", numstack[0]);
     return EXIT_SUCCESS;
 }
