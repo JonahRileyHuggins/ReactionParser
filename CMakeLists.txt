@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10) # Specify the minimum required CMake versio
 
 project(ReactionParser VERSION 1.0) # Define the project name and optionally its version
 
+set(CMAKE_BUILD_TYPE "Debug")
+
 # Add an executable target, specifying its name and source files
 add_executable(ReactionParser
     src/main.c

@@ -301,7 +301,7 @@ void shunt_operator(struct Operator *op) {
  * @brief Calculate the value of an infix notation equation by converting to postfix 
  * via the Shunting Yard Algorithm    
  */
-double main(double argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     char *expr;
     char *tstart=NULL;
     struct Operator startoperator={'X', 0, ASSOC_NONE, 0, NULL};
@@ -337,29 +337,29 @@ double main(double argc, char *argv[]) {
                 in priority order */
                 shunt_operator(op);
                 lastoperator=op;
-            } else if (isdigit(*expr)) tstart=expr;
+            } else if (isdigit(*expr) || *expr == '.') tstart=expr;
             else if (!isspace(*expr)) {
-                fprintf(stderr, "ERROR:Syntax error %c", *expr);
+                fprintf(stderr, "ERROR: Syntax error %c", *expr);
                 return EXIT_FAILURE;
             }
         } else {
             if (isspace(*expr)) {
-                push_numstack(atoi(tstart));
+                push_numstack(atof(tstart));
                 tstart=NULL;
                 lastoperator=NULL;
             } else if ((op=get_operator(*expr))) {
-                push_numstack(atoi(tstart));
+                push_numstack(atof(tstart));
                 tstart=NULL;
                 shunt_operator(op);
                 lastoperator=op;
-            } else if (!isdigit(*expr)) {
-                fprintf(stderr, "ERROR:Syntax error %c", *expr);
+            } else if (!isdigit(*expr) || *expr != '.') {
+                fprintf(stderr, "ERROR: Syntax error %c\n", *expr);
                 return EXIT_FAILURE;
             }
         }
     }
     // After tokens are handled, evaluate all remaining tokens on top of the operator stack
-    if (tstart) push_numstack(atoi(tstart));
+    if (tstart) push_numstack(atof(tstart));
     while (nopstack) {
         op=pop_opstack();
         n1=pop_numstack();
