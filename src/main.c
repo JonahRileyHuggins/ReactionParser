@@ -9,6 +9,7 @@
 #include <stdio.h> 
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
 
 // --- variable definitions --- //
 #define MAXOPSTACK 64
@@ -27,7 +28,7 @@
  * 
  * @returns integer argument1
  */
-int eval_uminus(int arg1, int arg2) {
+double eval_uminus(double arg1, double arg2) {
 
     return -arg1;
 }
@@ -48,7 +49,7 @@ int eval_uminus(int arg1, int arg2) {
  * 
  * @returns product of arg1 raised to the power of arg2
  */
-int eval_exponent(int arg1, int arg2) {
+double eval_exponent(double arg1, double arg2) {
 
     return arg2 < 0 ? 0 : (arg2 == 0 ? 1: arg1*eval_exponent(arg1, arg2-1));
 }
@@ -64,7 +65,7 @@ int eval_exponent(int arg1, int arg2) {
  * 
  * @returns integer value of arg1 raised to the power of arg2
  */
-int eval_multiply(int arg1, int arg2) {
+double eval_multiply(double arg1, double arg2) {
 
     return arg1*arg2;
 }
@@ -81,7 +82,7 @@ int eval_multiply(int arg1, int arg2) {
  * 
  * @returns quotient of arg1 and arg2
  */
-int eval_divide(int arg1, int arg2) {
+double eval_divide(double arg1, double arg2) {
     if(!arg2){ // handles division by zero
         fprintf(stderr, "ERROR: Division by zero\n");
     }
@@ -100,11 +101,12 @@ int eval_divide(int arg1, int arg2) {
  * 
  * @returns division remainder of arg1 and arg2
  */
-int eval_modulo(int arg1, int arg2) {
-    if(!arg2){ // handles division by zero
+double eval_modulo(double arg1, double arg2) {
+    if(arg2 == 0.0){ // handles division by zero
         fprintf(stderr, "ERROR: Division by zero\n");
+        return NAN; // Not-a-number indicates error
     }
-    return arg1%arg2; 
+    return fmod(arg1,arg2); 
 }
 
 /**
@@ -119,7 +121,7 @@ int eval_modulo(int arg1, int arg2) {
  * 
  * @returns sum of arg1 and arg2
  */
-int eval_add(int arg1, int arg2) {
+double eval_add(double arg1, double arg2) {
 
     return arg1+arg2; 
 }
@@ -136,7 +138,7 @@ int eval_add(int arg1, int arg2) {
  * 
  * @returns difference of arg1 and arg2
  */
-int eval_subtract(int arg1, int arg2) {
+double eval_subtract(double arg1, double arg2) {
 
     return arg1-arg2; 
 }
@@ -149,7 +151,7 @@ struct Operator {
     int precedence; // i.e. PEMDAS
     int association; // handedness of operator
     int unary; // bool
-    int (*eval)(int arg1, int arg2); //evaluation function
+    double (*eval)(double arg1, double arg2); //evaluation function
 } operators[] = {
     {'_', 9, ASSOC_RIGHT, 1, eval_uminus},
     {'^', 10, ASSOC_RIGHT, 0, eval_exponent},
@@ -178,7 +180,7 @@ struct Operator *get_operator(char ch) {
 // -- stack manipulating functions
 struct Operator *opstack[MAXOPSTACK]; //operator stack
 int nopstack=0; // stores number of operators in the expression
-int numstack[MAXNUMSTACK]; //operand-number stack
+double numstack[MAXNUMSTACK]; //operand-number stack
 int nnumstack=0; // number of operands in expression
 
 /**
@@ -214,7 +216,7 @@ struct Operator *pop_opstack() {
  * 
  * @param operand integer operand in the equation
  */
-void push_numstack(int operand) {
+void push_numstack(double operand) {
     if (nnumstack>MAXNUMSTACK-1) {
         fprintf(stderr, "ERROR: Operand stack overflow\n");
         exit(EXIT_FAILURE);
@@ -226,7 +228,7 @@ void push_numstack(int operand) {
 /**
  * @brief Removes a value from the operand stack, decrement operands stack counter
  */
-int pop_numstack() {
+double pop_numstack() {
     if (!nnumstack) {
         fprintf(stderr, "ERROR: Operand stack empty\n");
         exit(EXIT_FAILURE);
@@ -242,7 +244,7 @@ int pop_numstack() {
  */
 void shunt_operator(struct Operator *op) {
     struct Operator *pop; // pointer to Operator struct
-    int n1, n2; // left and right operands
+    double n1, n2; // left and right operands
 
     //handle paranthesis by evaluating everything until the matching right parenthasis
     if (op->operator=='(') {
@@ -299,12 +301,12 @@ void shunt_operator(struct Operator *op) {
  * @brief Calculate the value of an infix notation equation by converting to postfix 
  * via the Shunting Yard Algorithm    
  */
-double main(int argc, char *argv[]) {
+double main(double argc, char *argv[]) {
     char *expr;
     char *tstart=NULL;
     struct Operator startoperator={'X', 0, ASSOC_NONE, 0, NULL};
     struct Operator *op=NULL;
-    int n1, n2;
+    double n1, n2;
 
     struct Operator *lastoperator=&startoperator;
 
