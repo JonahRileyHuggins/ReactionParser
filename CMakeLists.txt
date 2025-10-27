@@ -9,7 +9,14 @@ add_executable(ReactionParser
     src/main.c
 )
 
+# Adding executable for unit tests
+add_executable(test_reactionparser tests/test_reactionparser.c)
+add_dependencies(test_reactionparser ReactionParser)
+
 # Linking math.h library
-target_link_libraries(ReactionParser PRIVATE m)
+if(UNIX)
+    target_link_libraries(ReactionParser m)
+    target_link_libraries(test_reactionparser m)
+endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})

@@ -14,12 +14,6 @@
 // --- variable definitions --- //
 #define MAXOPSTACK 64
 #define MAXNUMSTACK 64 
-#define CHECKMALLOC(var) if((var) == NULL) {printf("ERROR: malloc\n");abort();}
-
-// -- Size eval
-char get_keypress() {
-  return (char)getchar();
-}
 
 // -- Operator eval functions:
 /**
@@ -325,23 +319,7 @@ int isdigit_or_decimal(int c) {
  * @brief Calculate the value of an infix notation equation by converting to postfix 
  * via the Shunting Yard Algorithm    
  */
-int main(int argc, const char *argv[]) {
-    
-    char *expression;
-    expression = (char*) malloc(128 * sizeof(char)); // ?
-    CHECKMALLOC(expression);
-
-    int size = 0; // ?
-    char c;
-    while (size < 128) {
-        c = get_keypress();
-        if (c == EOF) break;
-
-        if (c != '\n') {
-            expression[size] = c;
-            size++;
-        }
-    }
+int main(int argc, char *argv[]) {
 
     char *expr; 
     char *tstart = NULL;
@@ -351,12 +329,8 @@ int main(int argc, const char *argv[]) {
 
     struct Operator *lastoperator = &startoperator;
 
-    // if (argc < 2) {
-    //     fprintf(stderr, "Usage: %s <expression>\n", argv[0]);
-    //     return EXIT_FAILURE;
-    // }
     // main iteration loop:
-    for (expr=expression; *expr; ++expr) {
+    for (expr=argv[1]; *expr; ++expr) {
         if (!tstart) { 
             // evaluate if current expression is an operator:
             if ((op=get_operator(*expr))) {
