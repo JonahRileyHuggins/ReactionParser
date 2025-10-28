@@ -27,10 +27,12 @@
 
 
 // --- library import --- //
+#include <immintrin.h>
 #include <stdio.h> 
 #include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
+#include <omp.h>
 
 // --- variable definitions --- //
 #define MAXOPSTACK 64
@@ -49,9 +51,10 @@
  * 
  * @returns integer argument1
  */
-double eval_uminus(double arg1, double arg2) {
-
-    return -arg1;
+static inline __m256d eval_uminus(__m256d arg1, __m256d arg2) {
+    //create mask with only sign 
+    const __m256d sign_mask = _mm256_set1_pd(-0.0);
+    return _mm256_xor_pd(arg1, sign_mask);
 }
 
 /**
@@ -70,9 +73,10 @@ double eval_uminus(double arg1, double arg2) {
  * 
  * @returns product of arg1 raised to the power of arg2
  */
-double eval_exponent(double arg1, double arg2) {
-
-    return arg2 < 0 ? 0 : (arg2 == 0 ? 1: arg1*eval_exponent(arg1, arg2-1));
+static inline double eval_exponent(double arg1, double arg2) {
+    
+    // return arg2 < 0 ? 0 : (arg2 == 0 ? 1: arg1*eval_exponent(arg1, arg2-1));
+    return pow(arg1, arg2);
 }
 
 /**
@@ -86,9 +90,8 @@ double eval_exponent(double arg1, double arg2) {
  * 
  * @returns integer value of arg1 raised to the power of arg2
  */
-double eval_multiply(double arg1, double arg2) {
-
-    return arg1*arg2;
+static inline __m256d eval_multiply(__m256d arg1, __m256d arg2) {
+    return _mm256_mul_pd(arg1, arg2);
 }
 
 /**
@@ -103,12 +106,8 @@ double eval_multiply(double arg1, double arg2) {
  * 
  * @returns quotient of arg1 and arg2
  */
-double eval_divide(double arg1, double arg2) {
-    if(!arg2){ // handles division by zero
-        fprintf(stderr, "ERROR: Division by zero\n");
-        exit(EXIT_FAILURE);
-    }
-    return arg1/arg2; 
+static inline __m256d eval_divide(__m256d arg1, __m256d arg2) {
+    return _mm256_div_pd(arg1, arg2);  // element-wise division of 4 doubles
 }
 
 /**
@@ -123,7 +122,7 @@ double eval_divide(double arg1, double arg2) {
  * 
  * @returns division remainder of arg1 and arg2
  */
-double eval_modulo(double arg1, double arg2) {
+static inline double eval_modulo(double arg1, double arg2) {
     if(arg2 == 0.0){ // handles division by zero
         fprintf(stderr, "ERROR: Division by zero\n");
         exit(EXIT_FAILURE);
@@ -143,9 +142,8 @@ double eval_modulo(double arg1, double arg2) {
  * 
  * @returns sum of arg1 and arg2
  */
-double eval_add(double arg1, double arg2) {
-
-    return arg1+arg2; 
+static inline __m256d eval_add(__m256d arg1, __m256d arg2) {
+    return _mm256_add_pd(arg1, arg2);
 }
 
 /**
@@ -160,9 +158,9 @@ double eval_add(double arg1, double arg2) {
  * 
  * @returns difference of arg1 and arg2
  */
-double eval_subtract(double arg1, double arg2) {
+static inline __m256d eval_subtract(__m256d arg1, __m256d arg2) {
 
-    return arg1-arg2; 
+    return _mm256_sub_pd(arg1, arg2); 
 }
 
 
@@ -191,7 +189,7 @@ struct Operator {
  * 
  * @param ch operator character-literal to retrieve
  */
-struct Operator *get_operator(char ch) {
+static inline struct Operator *get_operator(char ch) {
 
     for (int i=0; i < sizeof operators/sizeof operators[0]; ++i) {
         if (operators[i].operator==ch) return operators+i;
@@ -200,7 +198,6 @@ struct Operator *get_operator(char ch) {
 }
 
 // -- stack manipulating functions
-
 struct Operator *opstack[MAXOPSTACK]; //operator stack
 int nopstack=0; // stores number of operators in the expression
 
@@ -213,7 +210,7 @@ int nnumstack=0; // number of operands in expression
  * 
  * @param op pointer to the operators struct, 1 operator in struct
  */
-void push_opstack(struct Operator *op) 
+static inline void push_opstack(struct Operator *op) 
 {
     if (nopstack>MAXOPSTACK-1) {
         fprintf(stderr, "ERROR: Operator stack overflow\n"); // use greater size for operator stack
@@ -226,7 +223,7 @@ void push_opstack(struct Operator *op)
  * @brief Removes operator from the operator stack,
  * decrements operator stack
  */
-struct Operator *pop_opstack() {
+static inline struct Operator *pop_opstack() {
 
     if (!nopstack) {
         fprintf(stderr, "ERROR: Operator stack empty\n");
@@ -240,7 +237,7 @@ struct Operator *pop_opstack() {
  * 
  * @param operand integer operand in the equation
  */
-void push_numstack(double operand) {
+static inline void push_numstack(double operand) {
     if (nnumstack>MAXNUMSTACK-1) {
         fprintf(stderr, "ERROR: Operand stack overflow\n");
         exit(EXIT_FAILURE);
@@ -252,7 +249,7 @@ void push_numstack(double operand) {
 /**
  * @brief Removes a value from the operand stack, decrement operands stack counter
  */
-double pop_numstack() {
+static inline double pop_numstack() {
     if (!nnumstack) {
         fprintf(stderr, "ERROR: Operand stack empty\n");
         exit(EXIT_FAILURE);
@@ -266,7 +263,7 @@ double pop_numstack() {
  * 
  * @param op operator for evaluation
  */
-void shunt_operator(struct Operator *op) {
+static inline void shunt_operator(struct Operator *op) {
     struct Operator *pop; // pointer to Operator struct
     double n1, n2; // left and right operands
 
@@ -329,7 +326,7 @@ void shunt_operator(struct Operator *op) {
  * 
  * @returns bool 0 || 1
  */
-int isdigit_or_decimal(int c) {
+static inline isdigit_or_decimal(int c) {
   if (c == '.' || isdigit(c))
     return 1;
   else
@@ -357,6 +354,7 @@ double parser(int argc, char *argv[]) {
     struct Operator *lastoperator = &startoperator;
 
     // main iteration loop:
+    #pragma omp simd
     for (expr=argv[1]; *expr; ++expr) {
         if (!tstart) { 
             // evaluate if current expression is an operator:

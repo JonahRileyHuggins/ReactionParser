@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10) # Specify the minimum required CMake versio
 project(ReactionParser VERSION 1.0) # Define the project name and optionally its version
 
 set(CMAKE_BUILD_TYPE "Debug")
-
+add_compile_options(-O3 -march=znver4 -mavx2 -mavx -mavx512f -mavx512vl -mavx512cd -mavx512vl -mavx512bw -mavx512dq -mavx512ifma -mavx512vbmi -fopt-info-vec-optimized -fopt-info-vec-missed -fopt-info-vec-all)
 add_executable(ReactionParser
     src/main.c
     src/parser.c
