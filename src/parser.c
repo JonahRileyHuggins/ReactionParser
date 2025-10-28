@@ -354,7 +354,7 @@ double parser(int argc, char *argv[]) {
     struct Operator *lastoperator = &startoperator;
 
     // main iteration loop:
-    #pragma omp simd
+    #pragma vector always
     for (expr=argv[1]; *expr; ++expr) {
         if (!tstart) { 
             // evaluate if current expression is an operator:
