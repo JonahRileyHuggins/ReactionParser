@@ -11,7 +11,7 @@ A simple C program that evaluates arithmetic expressions using the **Shunting Ya
 
 - Original Shunting Yard algorithm implementation: [literateprograms.org](https://literateprograms.org/shunting_yard_algorithm__c_.html)
 - Double conversion support inspired by: [Anthony DiGirolamo, GitHub gist](https://gist.github.com/AnthonyDiGirolamo/1179218)
-- Modified and maintained by: Jonah Huggins
+- Vectorized and maintained by: Jonah Huggins
 
 ## Single-File vs. Header/Source Implementation
 A standalone, single-file version of the library is available on the `single-file` branch for easy integration. It is also included in release v1.0.
