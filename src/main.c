@@ -1,6 +1,5 @@
 #include <stdio.h>
-
-double parser(int argc, char *argv[]);  // forward declaration
+#include "parser.h"
 
 /**
  * @brief CLI wrapper

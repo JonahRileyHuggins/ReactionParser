@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-double parser(int argc, char *argv[]);  // forward declaration
+#include "parser.h"
 
 int main(void) {
 

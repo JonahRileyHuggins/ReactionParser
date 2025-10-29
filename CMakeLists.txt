@@ -14,15 +14,24 @@ add_executable(ReactionParser
     src/main.c
     src/parser.c
 )
+target_include_directories(ReactionParser PUBLIC 
+    ${CMAKE_SOURCE_DIR}/include
+)
 
 add_executable(test_reactionparser
     tests/test_reactionparser.c
     src/parser.c
 )
+target_include_directories(test_reactionparser PUBLIC 
+    ${CMAKE_SOURCE_DIR}/include
+)
 
 add_executable(speed
     tests/speedtest.c
     src/parser.c
+)
+target_include_directories(speed PUBLIC 
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 # Linking math.h library

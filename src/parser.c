@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file parser.c
  * @brief ReactionParser: a string parser and evaluator for arithmetic expressions.
  *
  * This program uses the Shunting Yard algorithm to convert infix notation expressions
@@ -34,94 +34,28 @@
 #include <math.h>
 #include <omp.h>
 
-// --- variable definitions --- //
-#define MAXOPSTACK 64
-#define MAXNUMSTACK 64 
+#include "parser.h"
 
 // -- Operator eval functions:
-/**
- * @brief Unary subtract function
- * @param arg1 integer operand
- * @todo integer now, convert to double later
- * @todo add avx instructions for optimization
- * 
- * @param arg2 integer operand to remove
- * @todo integer now, convert to double later
- * @todo add avx instructions for optimization
- * 
- * @returns integer argument1
- */
 static inline __m256d eval_uminus(__m256d arg1, __m256d arg2) {
     //create mask with only sign 
     const __m256d sign_mask = _mm256_set1_pd(-0.0);
     return _mm256_xor_pd(arg1, sign_mask);
 }
 
-/**
- * @brief Exponentiate function
- * ternary operator, if exponent operand (arg2) is less than 0, return 0. 
- * If not, evaluate exponent for being equal to 0. If it is; return 1, 
- * if not: a).subtract 1 from exponent, b). reevalute method with exponent-1 
- * c). multiply by operand-1 (arg1). Repeats until exponent satisfies return 
- * condition
- * 
- * @param arg1 integer operand to be raised too
- * @todo integer now, convert to double later...
- * 
- * @param arg2 exponent operand
- * @todo integer now, convert to double later...
- * 
- * @returns product of arg1 raised to the power of arg2
- */
 static inline double eval_exponent(double arg1, double arg2) {
     
-    // return arg2 < 0 ? 0 : (arg2 == 0 ? 1: arg1*eval_exponent(arg1, arg2-1));
     return pow(arg1, arg2);
 }
 
-/**
- * @brief Multiplier function for abstraction
- * @param arg1 variable operand
- * @todo integer now, convert to double later
- * @todo add avx instructions for optimization
- * 
- * @param arg2 multiplier operand
- * @todo integer now, convert to double later...
- * 
- * @returns integer value of arg1 raised to the power of arg2
- */
 static inline __m256d eval_multiply(__m256d arg1, __m256d arg2) {
     return _mm256_mul_pd(arg1, arg2);
 }
 
-/**
- * @brief Division function
- * @param arg1 numerator operand
- * @todo integer now, convert to double later
- * @todo add avx instructions for optimization
- * 
- * @param arg2 denomenator operand
- * @todo integer now, convert to double later..
- * @todo add avx instructions for optimization
- * 
- * @returns quotient of arg1 and arg2
- */
 static inline __m256d eval_divide(__m256d arg1, __m256d arg2) {
     return _mm256_div_pd(arg1, arg2);  // element-wise division of 4 doubles
 }
 
-/**
- * @brief Modulus Division function
- * @param arg1 numerator operand
- * @todo integer now, convert to double later
- * @todo add avx instructions for optimization
- * 
- * @param arg2 denomenator operand
- * @todo integer now, convert to double later..
- * @todo add avx instructions for optimization
- * 
- * @returns division remainder of arg1 and arg2
- */
 static inline double eval_modulo(double arg1, double arg2) {
     if(arg2 == 0.0){ // handles division by zero
         fprintf(stderr, "ERROR: Division by zero\n");
@@ -130,34 +64,10 @@ static inline double eval_modulo(double arg1, double arg2) {
     return fmodf(arg1,arg2); 
 }
 
-/**
- * @brief Addition function 
- * @param arg1 left operand
- * @todo integer now, convert to double later
- * @todo add avx instructions for optimization
- * 
- * @param arg2 right operand
- * @todo integer now, convert to double later..
- * @todo add avx instructions for optimization
- * 
- * @returns sum of arg1 and arg2
- */
 static inline __m256d eval_add(__m256d arg1, __m256d arg2) {
     return _mm256_add_pd(arg1, arg2);
 }
 
-/**
- * @brief Subtraction function 
- * @param arg1 left operand
- * @todo integer now, convert to double later
- * @todo add avx instructions for optimization
- * 
- * @param arg2 right operand
- * @todo integer now, convert to double later..
- * @todo add avx instructions for optimization
- * 
- * @returns difference of arg1 and arg2
- */
 static inline __m256d eval_subtract(__m256d arg1, __m256d arg2) {
 
     return _mm256_sub_pd(arg1, arg2); 
@@ -184,11 +94,6 @@ struct Operator {
     {')', 0, ASSOC_NONE, 0, NULL},
 };
 
-/**
- * @brief checks if a character is actually an operator
- * 
- * @param ch operator character-literal to retrieve
- */
 static inline struct Operator *get_operator(char ch) {
 
     for (int i=0; i < sizeof operators/sizeof operators[0]; ++i) {
@@ -204,12 +109,6 @@ int nopstack=0; // stores number of operators in the expression
 double numstack[MAXNUMSTACK]; //operand-number stack
 int nnumstack=0; // number of operands in expression
 
-/**
- * @brief pushes operator to the operator stack, 
- * increments the operator counter at each call
- * 
- * @param op pointer to the operators struct, 1 operator in struct
- */
 static inline void push_opstack(struct Operator *op) 
 {
     if (nopstack>MAXOPSTACK-1) {
@@ -219,10 +118,6 @@ static inline void push_opstack(struct Operator *op)
     opstack[nopstack++]=op; // increment operator stack 1 forward with operator argument 
 }
 
-/**
- * @brief Removes operator from the operator stack,
- * decrements operator stack
- */
 static inline struct Operator *pop_opstack() {
 
     if (!nopstack) {
@@ -232,11 +127,6 @@ static inline struct Operator *pop_opstack() {
     return opstack[--nopstack];
 }
 
-/**
- * @brief Appends to the operand stack, increment operand stack counter
- * 
- * @param operand integer operand in the equation
- */
 static inline void push_numstack(double operand) {
     if (nnumstack>MAXNUMSTACK-1) {
         fprintf(stderr, "ERROR: Operand stack overflow\n");
@@ -246,9 +136,6 @@ static inline void push_numstack(double operand) {
     return;
 }
 
-/**
- * @brief Removes a value from the operand stack, decrement operands stack counter
- */
 static inline double pop_numstack() {
     if (!nnumstack) {
         fprintf(stderr, "ERROR: Operand stack empty\n");
@@ -257,12 +144,6 @@ static inline double pop_numstack() {
     return numstack[--nnumstack];
 }
 
-// -- shunting operators function
-/**
- * @brief Handle operator characters once found
- * 
- * @param op operator for evaluation
- */
 static inline void shunt_operator(struct Operator *op) {
     struct Operator *pop; // pointer to Operator struct
     double n1, n2; // left and right operands
@@ -318,14 +199,6 @@ static inline void shunt_operator(struct Operator *op) {
     push_opstack(op); 
 }
 
-/**
- * @brief refactor method for evaluating decimal characters
- * thanks to Anthony DiGirolamo
- * 
- * @param c character to evaluate
- * 
- * @returns bool 0 || 1
- */
 static inline isdigit_or_decimal(int c) {
   if (c == '.' || isdigit(c))
     return 1;
@@ -333,12 +206,6 @@ static inline isdigit_or_decimal(int c) {
     return 0;
 }
 
-/**
- * @brief Evaluate an expression string (argv[1..argc-1])
- * @param argc argument count
- * @param argv argument vector
- * @return result float expression result
- */
 double parser(int argc, char *argv[]) {
 
     char *expr; 
