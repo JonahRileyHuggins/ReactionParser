@@ -6,6 +6,6 @@
  */
 int main(int argc, char *argv[]) {
     double result = parser(argc, argv);
-    printf("%G\n", result);
+    printf("%.15G\n", result);
     return 0;
 }
