@@ -92,7 +92,7 @@ struct Operator {
 };
 
 static inline struct Operator *get_operator(char ch) {
-
+    #pragma omp simd
     for (int i=0; i < sizeof operators/sizeof operators[0]; ++i) {
         if (operators[i].operator==ch) return operators+i;
     }
@@ -218,7 +218,7 @@ double parser(const char *expression) {
     struct Operator *lastoperator = &startoperator;
 
     // main iteration loop:
-    #pragma vector always
+    #pragma omp simd
     for (expr = expression; *expr; ++expr) {
         if (!tstart) { 
             // evaluate if current expression is an operator:

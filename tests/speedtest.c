@@ -19,8 +19,7 @@ int main(void) {
 
     for (int i = 0; i < iterations; i++) {
 
-        char *argv[] = {"speed", (char *)expr};
-        parser(2, argv);
+        parser(expr);
 
     }
     end = clock();

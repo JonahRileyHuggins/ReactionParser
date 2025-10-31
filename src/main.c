@@ -5,7 +5,8 @@
  * @brief CLI wrapper
  */
 int main(int argc, char *argv[]) {
-    double result = parser(argc, argv);
+    char *expression = argv;
+    double result = parser(expression);
     printf("%.15G\n", result);
     return 0;
 }
