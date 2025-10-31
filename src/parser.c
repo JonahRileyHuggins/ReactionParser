@@ -27,7 +27,6 @@
 
 
 // --- library import --- //
-#include <immintrin.h>
 #include <stdio.h> 
 #include <stdlib.h>
 #include <ctype.h>
@@ -37,10 +36,8 @@
 #include "parser.h"
 
 // -- Operator eval functions:
-static inline __m256d eval_uminus(__m256d arg1, __m256d arg2) {
-    //create mask with only sign 
-    const __m256d sign_mask = _mm256_set1_pd(-0.0);
-    return _mm256_xor_pd(arg1, sign_mask);
+static inline double eval_uminus(double arg1, double arg2) {
+    return -arg1;
 }
 
 static inline double eval_exponent(double arg1, double arg2) {
@@ -48,12 +45,12 @@ static inline double eval_exponent(double arg1, double arg2) {
     return pow(arg1, arg2);
 }
 
-static inline __m256d eval_multiply(__m256d arg1, __m256d arg2) {
-    return _mm256_mul_pd(arg1, arg2);
+static inline double eval_multiply(double arg1, double arg2) {
+    return arg1*arg2;
 }
 
-static inline __m256d eval_divide(__m256d arg1, __m256d arg2) {
-    return _mm256_div_pd(arg1, arg2);  // element-wise division of 4 doubles
+static inline double eval_divide(double arg1, double arg2) {
+    return arg1/arg2;  // element-wise division of 4 doubles
 }
 
 static inline double eval_modulo(double arg1, double arg2) {
@@ -64,13 +61,13 @@ static inline double eval_modulo(double arg1, double arg2) {
     return fmodf(arg1,arg2); 
 }
 
-static inline __m256d eval_add(__m256d arg1, __m256d arg2) {
-    return _mm256_add_pd(arg1, arg2);
+static inline double eval_add(double arg1, double arg2) {
+    return arg1+arg2;
 }
 
-static inline __m256d eval_subtract(__m256d arg1, __m256d arg2) {
+static inline double eval_subtract(double arg1, double arg2) {
 
-    return _mm256_sub_pd(arg1, arg2); 
+    return arg1 -arg2; 
 }
 
 
@@ -199,14 +196,14 @@ static inline void shunt_operator(struct Operator *op) {
     push_opstack(op); 
 }
 
-static inline isdigit_or_decimal(int c) {
+static inline int isdigit_or_decimal(int c) {
   if (c == '.' || isdigit(c))
     return 1;
   else
     return 0;
 }
 
-double parser(int argc, char *argv[]) {
+double parser(const char *expression) {
 
     char *expr; 
     char *tstart = NULL;
@@ -222,7 +219,7 @@ double parser(int argc, char *argv[]) {
 
     // main iteration loop:
     #pragma vector always
-    for (expr=argv[1]; *expr; ++expr) {
+    for (expr = expression; *expr; ++expr) {
         if (!tstart) { 
             // evaluate if current expression is an operator:
             if ((op=get_operator(*expr))) {

@@ -5,12 +5,16 @@
  * @date 2025
  */
 // --- library import --- //
-#include <immintrin.h>
 #include <stdio.h> 
 #include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
 #include <omp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 // --- variable definitions --- //
 #define MAXOPSTACK 64
@@ -25,7 +29,7 @@
  * 
  * @returns integer argument1
  */
-static inline __m256d eval_uminus(__m256d arg1, __m256d arg2);
+static inline double eval_uminus(double arg1, double arg2);
 
 /**
  * @brief Exponentiate function
@@ -45,7 +49,7 @@ static inline double eval_exponent(double arg1, double arg2);
  * 
  * @returns integer value of arg1 raised to the power of arg2
  */
-static inline __m256d eval_multiply(__m256d arg1, __m256d arg2);
+static inline double eval_multiply(double arg1, double arg2);
 /**
  * @brief Division function
  * 
@@ -54,7 +58,7 @@ static inline __m256d eval_multiply(__m256d arg1, __m256d arg2);
  * 
  * @returns quotient of arg1 and arg2
  */
-static inline __m256d eval_divide(__m256d arg1, __m256d arg2);
+static inline double eval_divide(double arg1, double arg2);
 
 /**
  * @brief Modulus Division function
@@ -74,7 +78,7 @@ static inline double eval_modulo(double arg1, double arg2);
  * 
  * @returns sum of arg1 and arg2
  */
-static inline __m256d eval_add(__m256d arg1, __m256d arg2);
+static inline double eval_add(double arg1, double arg2);
 
 /**
  * @brief Subtraction function 
@@ -83,7 +87,7 @@ static inline __m256d eval_add(__m256d arg1, __m256d arg2);
  * 
  * @returns difference of arg1 and arg2
  */
-static inline __m256d eval_subtract(__m256d arg1, __m256d arg2);
+static inline double eval_subtract(double arg1, double arg2);
 /**
  * @brief checks if a character is actually an operator
  * 
@@ -137,8 +141,11 @@ static inline int isdigit_or_decimal(int c);
 
 /**
  * @brief Evaluate an expression string (argv[1..argc-1])
- * @param argc argument count
- * @param argv argument vector
+ * @param expression the string expression to be evaluated
  * @return result float expression result
  */
-double parser(int argc, char *argv[]);
+double parser(const char *expression);
+
+#ifdef __cplusplus
+}
+#endif
