@@ -91,12 +91,18 @@ struct Operator {
     {')', 0, ASSOC_NONE, 0, NULL},
 };
 
-static inline struct Operator *get_operator(char ch) {
+static struct Operator *op_lookup[OP_MAX];
+
+static void init_operator_lookup(void) {
     #pragma omp simd
-    for (int i=0; i < sizeof operators/sizeof operators[0]; ++i) {
-        if (operators[i].operator==ch) return operators+i;
+    for (int i = 0; i < sizeof operators / sizeof operators[0]; ++i) {
+        unsigned char c = operators[i].operator;
+        op_lookup[c] = &operators[i];
     }
-    return NULL;
+}
+
+static inline struct Operator *get_operator(char ch) {
+    return op_lookup[(unsigned char)ch];
 }
 
 // -- stack manipulating functions
@@ -211,6 +217,8 @@ double parser(const char *expression) {
     struct Operator *op=NULL;
     double n1, n2;
 
+    init_operator_lookup();
+
     // --- reset stacks ---
     nnumstack = 0;
     nopstack = 0;
@@ -240,7 +248,7 @@ double parser(const char *expression) {
                 lastoperator=op;
             } else if (isdigit_or_decimal(*expr)) tstart = expr;
             else if (!isspace(*expr)) {
-                fprintf(stderr, "ERROR: Syntax error \n");
+                fprintf(stderr, "ERROR: Syntax error %c \n", *expr);
                 return EXIT_FAILURE;
             }
         } else {

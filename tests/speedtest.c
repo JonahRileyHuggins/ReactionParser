@@ -16,10 +16,10 @@ int main(void) {
 
     // Recording start time
     start = clock();
-
+    volatile double result = 0.0;
     for (int i = 0; i < iterations; i++) {
 
-        parser(expr);
+        result += parser(expr);
 
     }
     end = clock();

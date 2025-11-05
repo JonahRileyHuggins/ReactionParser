@@ -19,6 +19,7 @@ extern "C" {
 // --- variable definitions --- //
 #define MAXOPSTACK 64
 #define MAXNUMSTACK 64 
+#define OP_MAX 128
 
 // -- Operator eval functions:
 /**
