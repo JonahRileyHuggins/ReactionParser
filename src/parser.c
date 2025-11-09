@@ -211,7 +211,7 @@ static inline int isdigit_or_decimal(int c) {
 
 double parser(const char *expression) {
 
-    char *expr; 
+    const char *expr; 
     char *tstart = NULL;
     struct Operator startoperator = {'X', 0, ASSOC_NONE, 0, NULL};
     struct Operator *op=NULL;
