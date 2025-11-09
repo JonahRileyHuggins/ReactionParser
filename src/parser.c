@@ -30,7 +30,6 @@
 #include <stdio.h> 
 #include <stdlib.h>
 #include <ctype.h>
-#include <math.h>
 #include <threads.h>
 #include <omp.h>
 
@@ -48,7 +47,7 @@ static inline double eval_uminus(double arg1, double arg2) {
 
 static inline double eval_exponent(double arg1, double arg2) {
     
-    return pow(arg1, arg2);
+    return arg2 < 0 ? 0 : (arg2 == 0 ? 1: arg1*eval_exponent(arg1, arg2-1));;
 }
 
 static inline double eval_multiply(double arg1, double arg2) {
