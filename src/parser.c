@@ -31,9 +31,15 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
+#include <threads.h>
 #include <omp.h>
 
 #include "parser.h"
+
+// constants:
+#define MAXOPSTACK 64
+#define MAXNUMSTACK 64
+#define OP_MAX 128
 
 // -- Operator eval functions:
 static inline double eval_uminus(double arg1, double arg2) {
@@ -91,13 +97,16 @@ struct Operator {
     {')', 0, ASSOC_NONE, 0, NULL},
 };
 
+static struct Operator startoperator = {'X', 0, ASSOC_NONE, 0, (void*)0};
+static thread_local struct Operator *op = (void*)0;
+static thread_local char *expr = (void*)0;
+static thread_local char *tstart = (void*)0;
+
 static struct Operator *op_lookup[OP_MAX];
 
 static void init_operator_lookup(void) {
-    #pragma omp simd
     for (int i = 0; i < sizeof operators / sizeof operators[0]; ++i) {
-        unsigned char c = operators[i].operator;
-        op_lookup[c] = &operators[i];
+        op_lookup[operators[i].operator] = &operators[i];
     }
 }
 
@@ -202,19 +211,18 @@ static inline void shunt_operator(struct Operator *op) {
     push_opstack(op); 
 }
 
-static inline int isdigit_or_decimal(int c) {
-  if (c == '.' || isdigit(c))
-    return 1;
-  else
-    return 0;
+static inline int isdigit_or_decimal(int c) {return c == '.' || isdigit(c);}
+
+enum TokenType { T_OPERATOR, T_NUMBER, T_WHITESPACE, T_INVALID };
+static inline enum TokenType classify_char(char c) {
+    if (isdigit_or_decimal(c)) return T_NUMBER;
+    if (isspace(c)) return T_WHITESPACE;
+    if (get_operator(c)) return T_OPERATOR;
+    return T_INVALID;
 }
 
 double parser(const char *expression) {
-
-    const char *expr; 
-    char *tstart = NULL;
-    struct Operator startoperator = {'X', 0, ASSOC_NONE, 0, NULL};
-    struct Operator *op=NULL;
+    const char *expr = expression;
     double n1, n2;
 
     init_operator_lookup();
@@ -226,11 +234,11 @@ double parser(const char *expression) {
     struct Operator *lastoperator = &startoperator;
 
     // main iteration loop:
-    #pragma omp simd
     for (expr = expression; *expr; ++expr) {
-        if (!tstart) { 
-            // evaluate if current expression is an operator:
-            if ((op=get_operator(*expr))) {
+        enum TokenType token = classify_char(*expr);
+        if (!tstart) {
+            if (token == T_OPERATOR) {
+                op=get_operator(*expr);
                 if (lastoperator && (lastoperator == &startoperator || lastoperator->operator != ')')) {
                     if (op->operator == '-') op = get_operator('_');
                     else if (op->operator != '(') {
@@ -246,29 +254,31 @@ double parser(const char *expression) {
                 in priority order */
                 shunt_operator(op);
                 lastoperator=op;
-            } else if (isdigit_or_decimal(*expr)) tstart = expr;
-            else if (!isspace(*expr)) {
+            } else if (token == T_NUMBER) {
+                tstart = expr;
+            } else if (token == T_INVALID) {
                 fprintf(stderr, "ERROR: Syntax error %c \n", *expr);
                 return EXIT_FAILURE;
             }
         } else {
-            if (isspace(*expr)) {
-                push_numstack(atof(tstart));
+            if (token == T_WHITESPACE) {
+                push_numstack(strtod(tstart, NULL));
                 tstart=NULL;
                 lastoperator=NULL;
-            } else if ((op=get_operator(*expr))) {
-                push_numstack(atof(tstart));
+            } else if (token == T_OPERATOR) {
+                push_numstack(strtod(tstart, NULL));
                 tstart=NULL;
+                op = get_operator(*expr);
                 shunt_operator(op);
                 lastoperator=op;
-            } else if (!isdigit_or_decimal(*expr)) {
+            } else if (token != T_NUMBER) {
                 fprintf(stderr, "ERROR: Syntax error \n");
                 return EXIT_FAILURE;
             }
         }
     }
     // After tokens are handled, evaluate all remaining tokens on top of the operator stack
-    if (tstart) push_numstack(atof(tstart));
+    if (tstart) push_numstack(strtod(tstart, NULL));
 
     while (nopstack) {
         op=pop_opstack();
