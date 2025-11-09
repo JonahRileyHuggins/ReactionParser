@@ -98,6 +98,7 @@ struct Operator {
 
 static struct Operator startoperator = {'X', 0, ASSOC_NONE, 0, (void*)0};
 static thread_local struct Operator *op = (void*)0;
+static thread_local struct Operator *pop;
 static thread_local char *expr = (void*)0;
 static thread_local char *tstart = (void*)0;
 
@@ -156,7 +157,6 @@ static inline double pop_numstack() {
 }
 
 static inline void shunt_operator(struct Operator *op) {
-    struct Operator *pop; // pointer to Operator struct
     double n1, n2; // left and right operands
 
     //handle paranthesis by evaluating everything until the matching right parenthasis
