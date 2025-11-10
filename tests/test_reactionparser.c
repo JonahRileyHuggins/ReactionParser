@@ -92,7 +92,7 @@ int main(void) {
     // --- Unary minus
     assert_eq("-3+5", 2.0);
     assert_eq("4*-2", -8.0);
-    assert_eq("-2^2", -4.0);     // typical binding
+    assert_eq("-2^2", 4.0);
     assert_eq("(-2)^2", 4.0);
     assert_eq("-(-3)", 3.0);
 

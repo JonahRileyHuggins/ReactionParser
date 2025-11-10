@@ -49,12 +49,7 @@ static inline double eval_multiply(double arg1, double arg2) {return arg1*arg2;}
 static inline double eval_divide(double arg1, double arg2) {return arg1/arg2;}
 static inline double eval_add(double arg1, double arg2) {return arg1+arg2;}
 static inline double eval_subtract(double arg1, double arg2) {return arg1 -arg2;}
-static inline double eval_modulo(double arg1, double arg2) {
-    if(arg2 == 0.0){
-        fprintf(stderr, "ERROR: Division by zero\n");
-        exit(EXIT_FAILURE);}
-    return fmodf(arg1,arg2); 
-}
+static inline double eval_modulo(double arg1, double arg2) {return fmodf(arg1,arg2);}
 
 // -- Operator table details
 enum {ASSOC_NONE=0, ASSOC_LEFT, ASSOC_RIGHT}; 
@@ -65,8 +60,8 @@ struct Operator {
     int unary; // bool
     double (*eval)(double arg1, double arg2); //evaluation function
 } operators[] = {
-    {'_', 9, ASSOC_RIGHT, 1, eval_uminus},
-    {'^', 10, ASSOC_RIGHT, 0, eval_exponent},
+    {'_', 10, ASSOC_RIGHT, 1, eval_uminus},
+    {'^', 9, ASSOC_RIGHT, 0, eval_exponent},
     {'*', 8, ASSOC_LEFT, 0, eval_multiply},
     {'/', 8, ASSOC_LEFT, 0, eval_divide},
     {'%', 8, ASSOC_LEFT, 0, eval_modulo},
