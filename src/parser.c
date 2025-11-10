@@ -39,42 +39,22 @@
 #define MAXOPSTACK 64
 #define MAXNUMSTACK 64
 #define OP_MAX 128
+#define IS_DIGIT_OR_DECIMAL(c) ((c) == '.' || ((unsigned)((c) - '0') < 10))
+#define GET_OPERATOR(c) (op_lookup[(unsigned char)(c)])
 
 // -- Operator eval functions:
-static inline double eval_uminus(double arg1, double arg2) {
-    return -arg1;
-}
-
-static inline double eval_exponent(double arg1, double arg2) {
-    
-    return pow(arg1, arg2);
-}
-
-static inline double eval_multiply(double arg1, double arg2) {
-    return arg1*arg2;
-}
-
-static inline double eval_divide(double arg1, double arg2) {
-    return arg1/arg2;  // element-wise division of 4 doubles
-}
-
+static inline double eval_uminus(double arg1, double arg2) {return -arg1;}
+static inline double eval_exponent(double arg1, double arg2) {return pow(arg1, arg2);}
+static inline double eval_multiply(double arg1, double arg2) {return arg1*arg2;}
+static inline double eval_divide(double arg1, double arg2) {return arg1/arg2;}
+static inline double eval_add(double arg1, double arg2) {return arg1+arg2;}
+static inline double eval_subtract(double arg1, double arg2) {return arg1 -arg2;}
 static inline double eval_modulo(double arg1, double arg2) {
-    if(arg2 == 0.0){ // handles division by zero
+    if(arg2 == 0.0){
         fprintf(stderr, "ERROR: Division by zero\n");
-        exit(EXIT_FAILURE);
-    }
+        exit(EXIT_FAILURE);}
     return fmodf(arg1,arg2); 
 }
-
-static inline double eval_add(double arg1, double arg2) {
-    return arg1+arg2;
-}
-
-static inline double eval_subtract(double arg1, double arg2) {
-
-    return arg1 -arg2; 
-}
-
 
 // -- Operator table details
 enum {ASSOC_NONE=0, ASSOC_LEFT, ASSOC_RIGHT}; 
@@ -110,74 +90,71 @@ static void init_operator_lookup(void) {
     }
 }
 
-static inline struct Operator *get_operator(char ch) {
-    return op_lookup[(unsigned char)ch];
-}
-
 // -- stack manipulating functions
-struct Operator *opstack[MAXOPSTACK]; //operator stack
-int nopstack=0; // stores number of operators in the expression
+typedef struct {
+    struct Operator *opstack[MAXOPSTACK];
+    int nopstack;
+    double numstack[MAXNUMSTACK];
+    int nnumstack;
+} ParserContext;
 
-double numstack[MAXNUMSTACK]; //operand-number stack
-int nnumstack=0; // number of operands in expression
-
-static inline void push_opstack(struct Operator *op) 
+static inline void push_opstack(ParserContext *ctx, struct Operator *op) 
 {
-    if (nopstack>MAXOPSTACK-1) {
+    if (ctx->nopstack>MAXOPSTACK-1) {
         fprintf(stderr, "ERROR: Operator stack overflow\n"); // use greater size for operator stack
         exit(EXIT_FAILURE);
     }
-    opstack[nopstack++]=op; // increment operator stack 1 forward with operator argument 
+    ctx->opstack[ctx->nopstack++]=op; // increment operator stack 1 forward with operator argument 
 }
 
-static inline struct Operator *pop_opstack() {
+static inline struct Operator *pop_opstack(ParserContext *ctx) {
 
-    if (!nopstack) {
+    if (!ctx->nopstack) {
         fprintf(stderr, "ERROR: Operator stack empty\n");
         exit(EXIT_FAILURE);
         }
-    return opstack[--nopstack];
+    return ctx->opstack[--ctx->nopstack];
 }
 
-static inline void push_numstack(double operand) {
-    if (nnumstack>MAXNUMSTACK-1) {
+static inline void push_numstack(ParserContext *ctx, double operand) {
+    if (ctx->nnumstack>MAXNUMSTACK-1) {
         fprintf(stderr, "ERROR: Operand stack overflow\n");
         exit(EXIT_FAILURE);
     }
-    numstack[nnumstack++]=operand;
+    ctx->numstack[ctx->nnumstack++]=operand;
     return;
 }
 
-static inline double pop_numstack() {
-    if (!nnumstack) {
+static inline double pop_numstack(ParserContext *ctx) {
+    if (!ctx->nnumstack) {
         fprintf(stderr, "ERROR: Operand stack empty\n");
         exit(EXIT_FAILURE);
     }
-    return numstack[--nnumstack];
+    return ctx->numstack[--ctx->nnumstack];
 }
 
-static inline void shunt_operator(struct Operator *op) {
+static inline void shunt_operator(ParserContext *ctx, struct Operator *op) {
     double n1, n2; // left and right operands
 
     //handle paranthesis by evaluating everything until the matching right parenthasis
     if (op->operator=='(') {
-        push_opstack(op);
+        push_opstack(ctx, op);
         return;
     } else if (op->operator==')') {
         // evaluate subexpressions with parenthasis and push result as number to operand stack
-        while (nopstack > 0 && opstack[nopstack-1]->operator != '(') {
-            pop=pop_opstack(); // retrieve current operator
-            n1=pop_numstack(); //n1 becomes most recent operand
+        while (ctx->nopstack > 0 && ctx->opstack[ctx->nopstack-1]->operator != '(') {
+            pop=pop_opstack(ctx); // retrieve current operator
+            n1=pop_numstack(ctx); //n1 becomes most recent operand
             
             // if unary-subtract found; handle as single operator
-            if (pop->unary) push_numstack(pop->eval(n1, 0));
+            if (pop->unary) push_numstack(ctx, pop->eval(n1, 0));
             else { // for all other operators:
-                n2=pop_numstack(); // n2 is now equal to most recent value in numstack
-                push_numstack(pop->eval(n2, n1));
+                n2=pop_numstack(ctx); // n2 is now equal to most recent value in numstack
+                push_numstack(ctx,pop->eval(n2, n1));
             }
         }
         // evaluate current operator, ensures not at parenthesis yet
-        if (!(pop=pop_opstack()) || pop->operator != '(') {
+        if (!(pop=pop_opstack(ctx)) || pop->operator != '(') {
 
             fprintf(stderr, "ERROR: Stack error. No matching \'(\'\n)");
             exit(EXIT_FAILURE);
@@ -186,37 +163,35 @@ static inline void shunt_operator(struct Operator *op) {
     }
     if (op->association==ASSOC_RIGHT) {
         // handling exponents:
-        while (nopstack && op->precedence < opstack[nopstack-1]->precedence) {
-            pop=pop_opstack(); // retrieve operator function
-            n1=pop_numstack(); // retrieve exponent operand value
-            if (pop->unary) push_numstack(pop->eval(n1, 0)); //decrement exponent operand
+        while (ctx->nopstack && op->precedence < ctx->opstack[ctx->nopstack-1]->precedence) {
+            pop=pop_opstack(ctx); // retrieve operator function
+            n1=pop_numstack(ctx); // retrieve exponent operand value
+            if (pop->unary) push_numstack(ctx, pop->eval(n1, 0)); //decrement exponent operand
             else {
-                n2=pop_numstack(); // left-hand operand
-                push_numstack(pop->eval(n2, n1));
+                n2=pop_numstack(ctx); // left-hand operand
+                push_numstack(ctx, pop->eval(n2, n1));
             }
         }
     } else {
         // While the current operator does not take precedence over the former:
-        while (nopstack && op->precedence <= opstack[nopstack-1]->precedence) {
-            pop=pop_opstack();
-            n1=pop_numstack();
-            if (pop->unary) push_numstack(pop->eval(n1, 0));
+        while (ctx->nopstack && op->precedence <= ctx->opstack[ctx->nopstack-1]->precedence) {
+            pop=pop_opstack(ctx);
+            n1=pop_numstack(ctx);
+            if (pop->unary) push_numstack(ctx, pop->eval(n1, 0));
             else {
-                n2=pop_numstack();
-                push_numstack(pop->eval(n2, n1));
+                n2=pop_numstack(ctx);
+                push_numstack(ctx, pop->eval(n2, n1));
             }
         }
     }
-    push_opstack(op); 
+    push_opstack(ctx, op); 
 }
-
-static inline int isdigit_or_decimal(int c) {return c == '.' || isdigit(c);}
 
 enum TokenType { T_OPERATOR, T_NUMBER, T_WHITESPACE, T_INVALID };
 static inline enum TokenType classify_char(char c) {
-    if (isdigit_or_decimal(c)) return T_NUMBER;
+    if (IS_DIGIT_OR_DECIMAL(c)) return T_NUMBER;
     if (isspace(c)) return T_WHITESPACE;
-    if (get_operator(c)) return T_OPERATOR;
+    if (GET_OPERATOR(c)) return T_OPERATOR;
     return T_INVALID;
 }
 
@@ -224,11 +199,13 @@ double parser(const char *expression) {
     const char *expr = expression;
     double n1, n2;
 
+    ParserContext ctx = {0};
+
     init_operator_lookup();
 
     // --- reset stacks ---
-    nnumstack = 0;
-    nopstack = 0;
+    ctx.nnumstack = 0;
+    ctx.nopstack = 0;
 
     struct Operator *lastoperator = &startoperator;
 
@@ -237,9 +214,9 @@ double parser(const char *expression) {
         enum TokenType token = classify_char(*expr);
         if (!tstart) {
             if (token == T_OPERATOR) {
-                op=get_operator(*expr);
+                op=GET_OPERATOR(*expr);
                 if (lastoperator && (lastoperator == &startoperator || lastoperator->operator != ')')) {
-                    if (op->operator == '-') op = get_operator('_');
+                    if (op->operator == '-') op = GET_OPERATOR('_');
                     else if (op->operator != '(') {
                         fprintf(
                             stderr, 
@@ -251,7 +228,7 @@ double parser(const char *expression) {
                 }
                 /* move the current operator to the operator stack
                 in priority order */
-                shunt_operator(op);
+                shunt_operator(&ctx, op);
                 lastoperator=op;
             } else if (token == T_NUMBER) {
                 tstart = expr;
@@ -261,14 +238,14 @@ double parser(const char *expression) {
             }
         } else {
             if (token == T_WHITESPACE) {
-                push_numstack(strtod(tstart, NULL));
+                push_numstack(&ctx, strtod(tstart, NULL));
                 tstart=NULL;
                 lastoperator=NULL;
             } else if (token == T_OPERATOR) {
-                push_numstack(strtod(tstart, NULL));
+                push_numstack(&ctx, strtod(tstart, NULL));
                 tstart=NULL;
-                op = get_operator(*expr);
-                shunt_operator(op);
+                op = GET_OPERATOR(*expr);
+                shunt_operator(&ctx, op);
                 lastoperator=op;
             } else if (token != T_NUMBER) {
                 fprintf(stderr, "ERROR: Syntax error \n");
@@ -277,24 +254,24 @@ double parser(const char *expression) {
         }
     }
     // After tokens are handled, evaluate all remaining tokens on top of the operator stack
-    if (tstart) push_numstack(strtod(tstart, NULL));
+    if (tstart) push_numstack(&ctx, strtod(tstart, NULL));
 
-    while (nopstack) {
-        op=pop_opstack();
-        n1=pop_numstack();
-        if (op->unary) push_numstack(op->eval(n1, 0));
+    while (ctx.nopstack) {
+        op=pop_opstack(&ctx);
+        n1=pop_numstack(&ctx);
+        if (op->unary) push_numstack(&ctx, op->eval(n1, 0));
         else {
-            n2=pop_numstack();
-            push_numstack(op->eval(n2, n1));
+            n2=pop_numstack(&ctx);
+            push_numstack(&ctx, op->eval(n2, n1));
         }
     }
 
     // assertion method to ensure final operand stack has 1 value:
-    if (nnumstack != 1) {
-        fprintf(stderr, "ERROR: Number stack has %d elements after evaluation. Should be 1. \n", nnumstack);
+    if (ctx.nnumstack != 1) {
+        fprintf(stderr, "ERROR: Number stack has %d elements after evaluation. Should be 1. \n", ctx.nnumstack);
         return EXIT_FAILURE;
     }
-    double result = numstack[0];
+    double result = ctx.numstack[0];
     return result;
 }
     

@@ -7,6 +7,7 @@ add_compile_options(
     -Ofast 
     -march=native 
     -mavx2 -mavx 
+    -ffast-math
     -fopt-info-vec-optimized 
     -fopt-info-vec-missed 
     -fopt-info-vec-all
