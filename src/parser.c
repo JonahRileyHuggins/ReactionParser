@@ -71,11 +71,11 @@ struct Operator {
     {')', 0, ASSOC_NONE, 0, NULL},
 };
 
-static struct Operator startoperator = {'X', 0, ASSOC_NONE, 0, (void*)0};
-static thread_local struct Operator *op = (void*)0;
+static struct Operator startoperator = {'X', 0, ASSOC_NONE, 0, NULL};
+static thread_local struct Operator *op = NULL;
 static thread_local struct Operator *pop;
-static thread_local char *expr = (void*)0;
-static thread_local char *tstart = (void*)0;
+static thread_local char *expr = NULL;
+static thread_local char *tstart = NULL;
 
 static struct Operator *op_lookup[OP_MAX];
 
@@ -249,9 +249,9 @@ double parser(const char *expression) {
         }
     }
     // After tokens are handled, evaluate all remaining tokens on top of the operator stack
-    if (tstart) push_numstack(&ctx, strtod(tstart, NULL));
+    if (tstart){ push_numstack(&ctx, strtod(tstart, NULL)); tstart = NULL; }
 
-    while (ctx.nopstack) {
+    while (ctx.nopstack > 0) {
         op=pop_opstack(&ctx);
         n1=pop_numstack(&ctx);
         if (op->unary) push_numstack(&ctx, op->eval(n1, 0));
@@ -263,7 +263,14 @@ double parser(const char *expression) {
 
     // assertion method to ensure final operand stack has 1 value:
     if (ctx.nnumstack != 1) {
-        fprintf(stderr, "ERROR: Number stack has %d elements after evaluation. Should be 1. \n", ctx.nnumstack);
+        fprintf(stderr, "ERROR: Number stack has %d elements after evaluation (expected 1).\n", ctx.nnumstack);
+        fprintf(stderr, "Contents: [");
+        for (int i = 0; i < ctx.nnumstack; i++) {
+            fprintf(stderr, "%g", ctx.numstack[i]);
+            if (i < ctx.nnumstack - 1)
+                fprintf(stderr, ", ");
+        }
+        fprintf(stderr, "]\n");
         return EXIT_FAILURE;
     }
     double result = ctx.numstack[0];
