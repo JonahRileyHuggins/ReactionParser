@@ -191,7 +191,7 @@ static inline enum TokenType classify_char(char c) {
 }
 
 double parser(const char *expression) {
-    const char *expr = expression;
+    char *expr = expression;
     double n1, n2;
 
     ParserContext ctx = {0};
